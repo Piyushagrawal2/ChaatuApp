@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chaatu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chaatu-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: chaatu-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chaatu-net
+
+  chromadb:
+    image: chromadb/chroma:0.5.4
+    container_name: chaatu-chromadb
+    restart: unless-stopped
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=${CHROMADB_PERSIST_DIR}
+    ports:
+      - "${CHROMADB_PORT}:8000"
+    volumes:
+      - chromadb_data:${CHROMADB_PERSIST_DIR}
+    networks:
+      - chaatu-net
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    container_name: chaatu-ai-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${AI_SERVICE_PORT}:9000"
+    volumes:
+      - ./ai-service/src:/app/src
+      - ./shared:/app/shared
+    depends_on:
+      - chromadb
+    networks:
+      - chaatu-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: chaatu-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORT}:8000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./shared:/app/shared
+    depends_on:
+      - postgres
+      - redis
+      - ai-service
+    networks:
+      - chaatu-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: chaatu-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - chaatu-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:
+
+networks:
+  chaatu-net:
+    driver: bridge
