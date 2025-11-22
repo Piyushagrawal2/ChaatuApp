@@ -8,8 +8,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Valerio.ai - Next Gen Chatbot</title>
-        <meta name="description" content="Experience the future of AI with Valerio." />
+        <title>Chaatu.ai - Next Gen Chatbot</title>
+        <meta name="description" content="Experience the future of AI with Chaatu." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -22,7 +22,7 @@ export default function Home() {
 
         <footer className="border-t py-8 text-center text-sm text-muted-foreground">
           <div className="container mx-auto px-6">
-            <p>© {new Date().getFullYear()} Valerio.ai. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Chaatu.ai. All rights reserved.</p>
           </div>
         </footer>
       </main>

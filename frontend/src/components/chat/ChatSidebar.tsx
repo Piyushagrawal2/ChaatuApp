@@ -34,7 +34,7 @@ const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
                     <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
                         <Bot size={20} />
                     </div>
-                    <span className="font-bold text-lg">Valerio.ai</span>
+                    <span className="font-bold text-lg">Chaatu.ai</span>
                 </div>
 
                 <Button className="w-full justify-start gap-2 mb-6" variant="outline">

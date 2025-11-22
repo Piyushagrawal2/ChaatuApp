@@ -18,7 +18,7 @@ interface ChatHeaderProps {
 }
 
 const models = [
-    { id: 'valerio-v1.2', name: 'Valerio V 1.2', description: 'Fastest & Most Capable' },
+    { id: 'Chaatu-v1.2', name: 'Chaatu V 1.2', description: 'Fastest & Most Capable' },
     { id: 'gpt-4', name: 'GPT-4 Turbo', description: 'Complex Reasoning' },
     { id: 'claude-3', name: 'Claude 3 Opus', description: 'Creative Writing' },
     { id: 'gemini-pro', name: 'Gemini Pro', description: 'Multimodal Tasks' },

@@ -153,7 +153,7 @@ const ChatInput = ({ onSend, isWebSearchEnabled, onToggleWebSearch }: ChatInputP
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground mt-3">
-                    Valerio can make mistakes. Consider checking important information.
+                    Chaatu can make mistakes. Consider checking important information.
                 </p>
             </div>
         </div>

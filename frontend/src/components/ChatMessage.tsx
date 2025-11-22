@@ -39,7 +39,7 @@ const ChatMessage = ({ role, content }: ChatMessageProps) => {
             <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm">
-                        {role === 'assistant' ? 'Valerio AI' : 'You'}
+                        {role === 'assistant' ? 'Chhatu AI' : 'You'}
                     </span>
                 </div>
                 <div className="text-sm leading-relaxed text-foreground/90">

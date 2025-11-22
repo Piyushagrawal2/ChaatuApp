@@ -39,7 +39,7 @@ const Hero = () => {
                     transition={{ duration: 0.5, delay: 0.4 }}
                     className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground md:text-xl"
                 >
-                    Unlock the power of advanced artificial intelligence with Valerio.
+                    Unlock the power of advanced artificial intelligence with Chaatu.
                     Seamlessly interact, generate content, and solve complex problems in real-time.
                 </motion.p>
 

@@ -30,7 +30,7 @@ const Features = () => {
         <section id="features" className="py-24 bg-secondary/30">
             <div className="container mx-auto px-6">
                 <div className="mb-16 text-center">
-                    <h2 className="mb-4 text-3xl font-bold md:text-4xl">Why Choose Valerio?</h2>
+                    <h2 className="mb-4 text-3xl font-bold md:text-4xl">Why Choose Chaatu?</h2>
                     <p className="text-muted-foreground">Discover the capabilities that set us apart.</p>
                 </div>
 

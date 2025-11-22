@@ -12,7 +12,7 @@ const ChatInterface = () => {
     const { user } = useUser();
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string, attachments?: string[] }[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [currentModel, setCurrentModel] = useState('valerio-v1.2');
+    const [currentModel, setCurrentModel] = useState('chaatu-v1.2');
     const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
     const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
     const [customModelConfig, setCustomModelConfig] = useState<{ name: string, apiKey: string } | null>(null);

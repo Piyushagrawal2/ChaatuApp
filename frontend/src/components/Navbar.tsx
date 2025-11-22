@@ -20,7 +20,7 @@ const Navbar = () => {
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                         <MessageSquare size={24} />
                     </div>
-                    <span>Valerio.ai</span>
+                    <span>Chaatu.ai</span>
                 </Link>
 
                 <div className="hidden items-center gap-8 md:flex">
