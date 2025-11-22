@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
     Plus, Search, LayoutDashboard, Folder, History, Compass, Bot,
-    Settings, HelpCircle, LogOut, Zap
+    Settings, LogOut, MessageSquare
 } from 'lucide-react';
 import { useUser, useClerk } from '@clerk/nextjs';
 import {
@@ -12,68 +12,96 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SidebarItem } from './SidebarItem';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatSidebarProps {
     isOpen: boolean;
+    onNewChat: () => void;
 }
 
-const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
+const ChatSidebar = ({ isOpen, onNewChat }: ChatSidebarProps) => {
     const { user } = useUser();
     const { signOut } = useClerk();
 
     return (
         <motion.aside
-            initial={{ width: 280 }}
-            animate={{ width: isOpen ? 280 : 0 }}
-            className="relative flex flex-col border-r bg-muted/30 overflow-hidden"
+            initial={{ width: 80 }}
+            animate={{ width: isOpen ? 80 : 0 }}
+            className="relative flex flex-col items-center py-4 border-r bg-muted/30 overflow-visible z-50 h-full"
         >
-            <div className="p-4 min-w-[280px]">
-                <div className="flex items-center gap-2 mb-6 px-2">
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
-                        <Bot size={20} />
+
+            <div className="flex flex-col gap-2 w-full px-2">
+                <SidebarItem icon={Plus} label="New Chat" onClick={onNewChat} />
+
+                <SidebarItem icon={Compass} label="Explore">
+                    <div className="p-4 space-y-4">
+                        <h3 className="font-semibold text-lg">Explore</h3>
+                        <div className="space-y-2">
+                            <Button variant="ghost" className="w-full justify-start text-sm">Trending</Button>
+                            <Button variant="ghost" className="w-full justify-start text-sm">Most Popular</Button>
+                            <Button variant="ghost" className="w-full justify-start text-sm">New Arrivals</Button>
+                        </div>
                     </div>
-                    <span className="font-bold text-lg">Chaatu.ai</span>
-                </div>
+                </SidebarItem>
 
-                <Button className="w-full justify-start gap-2 mb-6" variant="outline">
-                    <Plus size={16} />
-                    New Chat
-                </Button>
+                <SidebarItem icon={History} label="History">
+                    <div className="flex flex-col h-full max-h-[400px]">
+                        <div className="p-4 border-b">
+                            <h3 className="font-semibold text-lg">Chat History</h3>
+                        </div>
+                        <ScrollArea className="flex-1 p-2">
+                            <div className="space-y-1">
+                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Today</div>
+                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
+                                    Project Planning
+                                </Button>
+                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
+                                    React Components
+                                </Button>
+                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">Yesterday</div>
+                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
+                                    Debug API Route
+                                </Button>
+                            </div>
+                        </ScrollArea>
+                    </div>
+                </SidebarItem>
 
-                <div className="relative mb-6">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search chat..." className="pl-9 bg-background/50" />
-                </div>
+                <SidebarItem icon={LayoutDashboard} label="Library">
+                    <div className="p-4 space-y-4">
+                        <h3 className="font-semibold text-lg">Library</h3>
+                        <p className="text-sm text-muted-foreground">Your saved prompts and templates will appear here.</p>
+                    </div>
+                </SidebarItem>
 
-                <nav className="space-y-1">
-                    <SidebarItem icon={Compass} label="Explore" />
-                    <SidebarItem icon={LayoutDashboard} label="Library" />
-                    <SidebarItem icon={Folder} label="Files" />
-                    <SidebarItem icon={History} label="History" />
-                </nav>
+                <SidebarItem icon={Folder} label="Files">
+                    <div className="p-4 space-y-4">
+                        <h3 className="font-semibold text-lg">Files</h3>
+                        <p className="text-sm text-muted-foreground">No files uploaded yet.</p>
+                    </div>
+                </SidebarItem>
             </div>
 
-            <div className="mt-auto p-4 border-t bg-background/50 backdrop-blur flex items-center justify-between gap-2">
+            <div className="mt-auto flex flex-col gap-2 w-full px-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted/50 h-14">
+                        <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={user?.imageUrl} />
                                 <AvatarFallback>{user?.firstName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col items-start overflow-hidden">
-                                <span className="font-medium truncate w-full text-left">
-                                    {user?.fullName || 'User'}
-                                </span>
-                                <span className="text-xs text-muted-foreground truncate w-full text-left">
-                                    {user?.primaryEmailAddress?.emailAddress || 'user@example.com'}
-                                </span>
-                            </div>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuContent align="start" side="right" className="w-56 ml-2">
+                        <div className="flex items-center gap-2 p-2">
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-medium leading-none">{user?.fullName}</p>
+                                <p className="text-xs leading-none text-muted-foreground">{user?.primaryEmailAddress?.emailAddress}</p>
+                            </div>
+                        </div>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem className="cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
@@ -89,12 +117,5 @@ const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
         </motion.aside>
     );
 };
-
-const SidebarItem = ({ icon: Icon, label }: { icon: any, label: string }) => (
-    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
-        <Icon size={18} />
-        {label}
-    </Button>
-);
 
 export default ChatSidebar;

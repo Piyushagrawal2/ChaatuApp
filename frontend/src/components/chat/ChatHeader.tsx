@@ -1,4 +1,4 @@
-import { Menu, ChevronDown, Sparkles } from 'lucide-react';
+import { Menu, ChevronDown, Sparkles, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -34,6 +34,13 @@ const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelec
                 <Button variant="ghost" size="icon" onClick={onToggleSidebar}>
                     <Menu size={20} />
                 </Button>
+
+                <div className="flex items-center gap-2 mr-4">
+                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
+                        <Bot size={20} />
+                    </div>
+                    <span className="font-bold text-lg hidden md:block">Chaatu.ai</span>
+                </div>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

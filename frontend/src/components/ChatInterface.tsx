@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
 import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
-import CustomModelDialog from './chat/CustomModelDialog';
 import { useUser } from '@clerk/nextjs';
+
+const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 
 const ChatInterface = () => {
     const { user } = useUser();
@@ -18,7 +19,7 @@ const ChatInterface = () => {
     const [customModelConfig, setCustomModelConfig] = useState<{ name: string, apiKey: string } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleSend = (content: string, attachments: File[]) => {
+    const handleSend = useCallback((content: string, attachments: File[]) => {
         const attachmentNames = attachments.map(f => f.name);
 
         const newMessages = [
@@ -47,12 +48,24 @@ const ChatInterface = () => {
                 { role: 'assistant' as const, content: responseContent }
             ]);
         }, 1000);
-    };
+    }, [messages, customModelConfig, currentModel, isWebSearchEnabled]);
 
-    const handleCustomModelSubmit = (name: string, apiKey: string) => {
+    const handleCustomModelSubmit = useCallback((name: string, apiKey: string) => {
         setCustomModelConfig({ name, apiKey });
         setCurrentModel('custom');
-    };
+    }, []);
+
+    const handleNewChat = useCallback(() => {
+        setMessages([]);
+    }, []);
+
+    const toggleSidebar = useCallback(() => {
+        setIsSidebarOpen(prev => !prev);
+    }, []);
+
+    const toggleWebSearch = useCallback(() => {
+        setIsWebSearchEnabled(prev => !prev);
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -61,49 +74,53 @@ const ChatInterface = () => {
     }, [messages]);
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
-            <ChatSidebar isOpen={isSidebarOpen} />
+        <div className="flex flex-col h-screen overflow-hidden bg-background">
+            <ChatHeader
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={toggleSidebar}
+                currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
+                onModelSelect={setCurrentModel}
+                onCustomModelClick={() => setIsCustomModelDialogOpen(true)}
+            />
 
-            <main className="flex-1 flex flex-col relative">
-                <ChatHeader
-                    isSidebarOpen={isSidebarOpen}
-                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                    currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
-                    onModelSelect={setCurrentModel}
-                    onCustomModelClick={() => setIsCustomModelDialogOpen(true)}
-                />
+            <div className="flex flex-1 overflow-hidden relative">
+                <ChatSidebar isOpen={isSidebarOpen} onNewChat={handleNewChat} />
 
-                <div className="flex-1 overflow-hidden relative">
-                    <ScrollArea className="h-full p-4" ref={scrollRef}>
-                        <div className="max-w-3xl mx-auto space-y-6 py-8">
-                            {messages.length === 0 ? (
-                                <EmptyState userName={user?.firstName || 'User'} />
-                            ) : (
-                                messages.map((msg, i) => (
-                                    <ChatMessage
-                                        key={i}
-                                        role={msg.role}
-                                        content={msg.content}
-                                        attachments={msg.attachments}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </ScrollArea>
-                </div>
+                <main className="flex-1 flex flex-col relative min-w-0">
+                    <div className="flex-1 overflow-hidden relative">
+                        <ScrollArea className="h-full p-4" ref={scrollRef}>
+                            <div className="max-w-3xl mx-auto space-y-6 py-8">
+                                {messages.length === 0 ? (
+                                    <EmptyState userName={user?.firstName || 'User'} />
+                                ) : (
+                                    messages.map((msg, i) => (
+                                        <ChatMessage
+                                            key={i}
+                                            role={msg.role}
+                                            content={msg.content}
+                                            attachments={msg.attachments}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
 
-                <ChatInput
-                    onSend={handleSend}
-                    isWebSearchEnabled={isWebSearchEnabled}
-                    onToggleWebSearch={() => setIsWebSearchEnabled(!isWebSearchEnabled)}
-                />
+                    <ChatInput
+                        onSend={handleSend}
+                        isWebSearchEnabled={isWebSearchEnabled}
+                        onToggleWebSearch={toggleWebSearch}
+                    />
 
-                <CustomModelDialog
-                    isOpen={isCustomModelDialogOpen}
-                    onClose={() => setIsCustomModelDialogOpen(false)}
-                    onSubmit={handleCustomModelSubmit}
-                />
-            </main>
+                    <Suspense fallback={null}>
+                        <CustomModelDialog
+                            isOpen={isCustomModelDialogOpen}
+                            onClose={() => setIsCustomModelDialogOpen(false)}
+                            onSubmit={handleCustomModelSubmit}
+                        />
+                    </Suspense>
+                </main>
+            </div>
         </div>
     );
 };
@@ -141,8 +158,8 @@ const EmptyState = ({ userName }: { userName: string }) => (
 
 const SuggestionCard = ({ icon, title, desc }: { icon: string, title: string, desc: string }) => (
     <motion.div
-        whileHover={{ scale: 1.02 }}
-        className="p-6 rounded-2xl bg-gradient-to-br from-purple-50/50 to-pink-50/50 border border-purple-100/50 cursor-pointer hover:shadow-md transition-all dark:from-purple-950/10 dark:to-pink-950/10 dark:border-purple-900/20"
+        whileHover={{ y: -2 }}
+        className="p-6 rounded-2xl bg-gradient-to-br from-purple-50/50 to-pink-50/50 border border-purple-100/50 cursor-pointer hover:shadow-md transition-colors duration-200 dark:from-purple-950/10 dark:to-pink-950/10 dark:border-purple-900/20 hover:border-purple-200 dark:hover:border-purple-800"
     >
         <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-xl text-white mb-4 shadow-lg shadow-purple-200 dark:shadow-none">
             {icon}
