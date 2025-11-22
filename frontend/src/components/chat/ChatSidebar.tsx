@@ -55,46 +55,31 @@ const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
                 </nav>
             </div>
 
-            <div className="mt-auto p-4 border-t min-w-[280px]">
+            <div className="mt-auto p-4 border-t bg-background/50 backdrop-blur flex items-center justify-between gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                            <Avatar className="h-9 w-9">
+                        <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted/50 h-14">
+                            <Avatar className="h-8 w-8">
                                 <AvatarImage src={user?.imageUrl} />
                                 <AvatarFallback>{user?.firstName?.charAt(0) || 'U'}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 overflow-hidden text-left">
-                                <p className="text-sm font-medium truncate">{user?.fullName || 'User'}</p>
-                                <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress || ''}</p>
+                            <div className="flex flex-col items-start overflow-hidden">
+                                <span className="font-medium truncate w-full text-left">
+                                    {user?.fullName || 'User'}
+                                </span>
+                                <span className="text-xs text-muted-foreground truncate w-full text-left">
+                                    {user?.primaryEmailAddress?.emailAddress || 'user@example.com'}
+                                </span>
                             </div>
-                        </div>
+                        </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-64" align="start" side="top">
-                        <div className="flex items-center gap-3 p-2">
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={user?.imageUrl} />
-                                <AvatarFallback>{user?.firstName?.charAt(0) || 'U'}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-medium truncate">{user?.fullName || 'User'}</p>
-                                <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress || ''}</p>
-                            </div>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <Zap className="mr-2 h-4 w-4" />
-                            <span>Personalization</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem className="cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <HelpCircle className="mr-2 h-4 w-4" />
-                            <span>Help</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => signOut({ redirectUrl: '/' })}>
+                        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600" onClick={() => signOut()}>
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Log out</span>
                         </DropdownMenuItem>

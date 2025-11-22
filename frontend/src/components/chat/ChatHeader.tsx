@@ -7,6 +7,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { ThemeToggle } from '../ThemeToggle';
 
 interface ChatHeaderProps {
     isSidebarOpen: boolean;
@@ -62,7 +63,8 @@ const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelec
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-        </header>
+            <ThemeToggle />
+        </header >
     );
 };
 

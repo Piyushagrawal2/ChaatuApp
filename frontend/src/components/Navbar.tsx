@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { MessageSquare } from 'lucide-react';
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Navbar = () => {
+    const { isSignedIn } = useAuth();
+
     return (
         <motion.nav
             initial={{ y: -100, opacity: 0 }}
@@ -30,20 +33,13 @@ const Navbar = () => {
                     <Link href="#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                         Pricing
                     </Link>
+                    <Link href="#about" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+                        About
+                    </Link>
+                    <ThemeToggle />
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <SignedOut>
-                        <Link href="/sign-in">
-                            <Button variant="ghost">Sign In</Button>
-                        </Link>
-                        <Link href="/sign-up">
-                            <Button className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40">
-                                Get Started
-                            </Button>
-                        </Link>
-                    </SignedOut>
-
                     <SignedIn>
                         <Link href="/chat">
                             <Button variant="outline" className="mr-4">
