@@ -1,7 +1,16 @@
 import { motion } from 'framer-motion';
 import {
-    Plus, Search, LayoutDashboard, Folder, History, Compass, Bot
+    Plus, Search, LayoutDashboard, Folder, History, Compass, Bot,
+    Settings, HelpCircle, LogOut, Zap
 } from 'lucide-react';
+import { useUser, useClerk } from '@clerk/nextjs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +20,9 @@ interface ChatSidebarProps {
 }
 
 const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
+    const { user } = useUser();
+    const { signOut } = useClerk();
+
     return (
         <motion.aside
             initial={{ width: 280 }}
@@ -44,16 +56,50 @@ const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
             </div>
 
             <div className="mt-auto p-4 border-t min-w-[280px]">
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src="https://github.com/shadcn.png" />
-                        <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-medium truncate">Marcus Aurelius</p>
-                        <p className="text-xs text-muted-foreground truncate">marcaurel@gmail.com</p>
-                    </div>
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={user?.imageUrl} />
+                                <AvatarFallback>{user?.firstName?.charAt(0) || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 overflow-hidden text-left">
+                                <p className="text-sm font-medium truncate">{user?.fullName || 'User'}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress || ''}</p>
+                            </div>
+                        </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-64" align="start" side="top">
+                        <div className="flex items-center gap-3 p-2">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={user?.imageUrl} />
+                                <AvatarFallback>{user?.firstName?.charAt(0) || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 overflow-hidden">
+                                <p className="text-sm font-medium truncate">{user?.fullName || 'User'}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress || ''}</p>
+                            </div>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                            <Zap className="mr-2 h-4 w-4" />
+                            <span>Personalization</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Settings</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                            <HelpCircle className="mr-2 h-4 w-4" />
+                            <span>Help</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => signOut({ redirectUrl: '/' })}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Log out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </motion.aside>
     );

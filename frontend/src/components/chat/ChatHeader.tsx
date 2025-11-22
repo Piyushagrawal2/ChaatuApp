@@ -5,6 +5,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
 interface ChatHeaderProps {
@@ -12,6 +13,7 @@ interface ChatHeaderProps {
     onToggleSidebar: () => void;
     currentModel: string;
     onModelSelect: (model: string) => void;
+    onCustomModelClick: () => void;
 }
 
 const models = [
@@ -21,8 +23,9 @@ const models = [
     { id: 'gemini-pro', name: 'Gemini Pro', description: 'Multimodal Tasks' },
 ];
 
-const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelect }: ChatHeaderProps) => {
-    const selectedModel = models.find(m => m.id === currentModel) || models[0];
+const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelect, onCustomModelClick }: ChatHeaderProps) => {
+    const selectedModel = models.find(m => m.id === currentModel);
+    const displayName = selectedModel ? selectedModel.name : currentModel;
 
     return (
         <header className="h-14 border-b flex items-center justify-between px-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
@@ -34,7 +37,7 @@ const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelec
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="gap-2 font-medium hover:bg-muted/50">
-                            {selectedModel.name}
+                            {displayName}
                             <ChevronDown size={16} className="text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -52,6 +55,10 @@ const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelec
                                 <span className="text-xs text-muted-foreground">{model.description}</span>
                             </DropdownMenuItem>
                         ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={onCustomModelClick} className="cursor-pointer">
+                            <span className="text-purple-500 font-medium">Open Source / Custom...</span>
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

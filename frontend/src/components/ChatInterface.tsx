@@ -5,12 +5,17 @@ import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
 import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
+import CustomModelDialog from './chat/CustomModelDialog';
+import { useUser } from '@clerk/nextjs';
 
 const ChatInterface = () => {
+    const { user } = useUser();
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string, attachments?: string[] }[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [currentModel, setCurrentModel] = useState('valerio-v1.2');
     const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
+    const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
+    const [customModelConfig, setCustomModelConfig] = useState<{ name: string, apiKey: string } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const handleSend = (content: string, attachments: File[]) => {
@@ -25,6 +30,11 @@ const ChatInterface = () => {
         // Simulate AI response
         setTimeout(() => {
             let responseContent = "I've received your message.";
+
+            if (customModelConfig && currentModel === 'custom') {
+                responseContent = `[Using ${customModelConfig.name}] ${responseContent}`;
+            }
+
             if (isWebSearchEnabled) {
                 responseContent += " I also searched the web for relevant information.";
             }
@@ -32,11 +42,16 @@ const ChatInterface = () => {
                 responseContent += ` I see you attached ${attachments.length} file(s).`;
             }
 
-            setMessages([
-                ...newMessages,
+            setMessages(prev => [
+                ...prev,
                 { role: 'assistant' as const, content: responseContent }
             ]);
         }, 1000);
+    };
+
+    const handleCustomModelSubmit = (name: string, apiKey: string) => {
+        setCustomModelConfig({ name, apiKey });
+        setCurrentModel('custom');
     };
 
     useEffect(() => {
@@ -53,15 +68,16 @@ const ChatInterface = () => {
                 <ChatHeader
                     isSidebarOpen={isSidebarOpen}
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                    currentModel={currentModel}
+                    currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
                     onModelSelect={setCurrentModel}
+                    onCustomModelClick={() => setIsCustomModelDialogOpen(true)}
                 />
 
                 <div className="flex-1 overflow-hidden relative">
                     <ScrollArea className="h-full p-4" ref={scrollRef}>
                         <div className="max-w-3xl mx-auto space-y-6 py-8">
                             {messages.length === 0 ? (
-                                <EmptyState />
+                                <EmptyState userName={user?.firstName || 'User'} />
                             ) : (
                                 messages.map((msg, i) => (
                                     <ChatMessage
@@ -81,16 +97,22 @@ const ChatInterface = () => {
                     isWebSearchEnabled={isWebSearchEnabled}
                     onToggleWebSearch={() => setIsWebSearchEnabled(!isWebSearchEnabled)}
                 />
+
+                <CustomModelDialog
+                    isOpen={isCustomModelDialogOpen}
+                    onClose={() => setIsCustomModelDialogOpen(false)}
+                    onSubmit={handleCustomModelSubmit}
+                />
             </main>
         </div>
     );
 };
 
-const EmptyState = () => (
+const EmptyState = ({ userName }: { userName: string }) => (
     <div className="flex flex-col items-center justify-center h-full text-center space-y-8 mt-20">
         <div className="space-y-2">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Hello Marcus
+                Hello {userName}
             </h1>
             <h2 className="text-3xl font-semibold text-muted-foreground">
                 How can I help you today?
