@@ -1,0 +1,69 @@
+import { motion } from 'framer-motion';
+import {
+    Plus, Search, LayoutDashboard, Folder, History, Compass, Bot
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+interface ChatSidebarProps {
+    isOpen: boolean;
+}
+
+const ChatSidebar = ({ isOpen }: ChatSidebarProps) => {
+    return (
+        <motion.aside
+            initial={{ width: 280 }}
+            animate={{ width: isOpen ? 280 : 0 }}
+            className="relative flex flex-col border-r bg-muted/30 overflow-hidden"
+        >
+            <div className="p-4 min-w-[280px]">
+                <div className="flex items-center gap-2 mb-6 px-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground">
+                        <Bot size={20} />
+                    </div>
+                    <span className="font-bold text-lg">Valerio.ai</span>
+                </div>
+
+                <Button className="w-full justify-start gap-2 mb-6" variant="outline">
+                    <Plus size={16} />
+                    New Chat
+                </Button>
+
+                <div className="relative mb-6">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search chat..." className="pl-9 bg-background/50" />
+                </div>
+
+                <nav className="space-y-1">
+                    <SidebarItem icon={Compass} label="Explore" />
+                    <SidebarItem icon={LayoutDashboard} label="Library" />
+                    <SidebarItem icon={Folder} label="Files" />
+                    <SidebarItem icon={History} label="History" />
+                </nav>
+            </div>
+
+            <div className="mt-auto p-4 border-t min-w-[280px]">
+                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src="https://github.com/shadcn.png" />
+                        <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-medium truncate">Marcus Aurelius</p>
+                        <p className="text-xs text-muted-foreground truncate">marcaurel@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </motion.aside>
+    );
+};
+
+const SidebarItem = ({ icon: Icon, label }: { icon: any, label: string }) => (
+    <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground">
+        <Icon size={18} />
+        {label}
+    </Button>
+);
+
+export default ChatSidebar;

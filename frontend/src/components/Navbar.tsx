@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { MessageSquare } from 'lucide-react';
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 const Navbar = () => {
     return (
@@ -32,11 +33,25 @@ const Navbar = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Link href="/chat">
-                        <Button className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40">
-                            Try Now
-                        </Button>
-                    </Link>
+                    <SignedOut>
+                        <Link href="/sign-in">
+                            <Button variant="ghost">Sign In</Button>
+                        </Link>
+                        <Link href="/sign-up">
+                            <Button className="rounded-full px-6 shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40">
+                                Get Started
+                            </Button>
+                        </Link>
+                    </SignedOut>
+
+                    <SignedIn>
+                        <Link href="/chat">
+                            <Button variant="outline" className="mr-4">
+                                Go to Chat
+                            </Button>
+                        </Link>
+                        <UserButton afterSignOutUrl="/" />
+                    </SignedIn>
                 </div>
             </div>
         </motion.nav>
