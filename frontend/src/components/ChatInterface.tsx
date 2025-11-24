@@ -6,6 +6,7 @@ import ChatHeader from './chat/ChatHeader';
 import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
 import { useUser } from '@clerk/nextjs';
+import { api } from '@/services/api';
 
 const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 
@@ -17,9 +18,11 @@ const ChatInterface = () => {
     const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
     const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
     const [customModelConfig, setCustomModelConfig] = useState<{ name: string, apiKey: string } | null>(null);
+    const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+    const [refreshSidebarTrigger, setRefreshSidebarTrigger] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleSend = useCallback((content: string, attachments: File[]) => {
+    const handleSend = useCallback(async (content: string, attachments: File[]) => {
         const attachmentNames = attachments.map(f => f.name);
 
         const newMessages = [
@@ -28,27 +31,44 @@ const ChatInterface = () => {
         ];
         setMessages(newMessages);
 
-        // Simulate AI response
-        setTimeout(() => {
-            let responseContent = "I've received your message.";
-
-            if (customModelConfig && currentModel === 'custom') {
-                responseContent = `[Using ${customModelConfig.name}] ${responseContent}`;
+        try {
+            let chatId = currentChatId;
+            if (!chatId) {
+                const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
+                const newChat = await api.createChat(title, user?.id || 'anonymous');
+                chatId = newChat.id;
+                setCurrentChatId(chatId);
+                setRefreshSidebarTrigger(prev => prev + 1);
             }
 
-            if (isWebSearchEnabled) {
-                responseContent += " I also searched the web for relevant information.";
-            }
-            if (attachments.length > 0) {
-                responseContent += ` I see you attached ${attachments.length} file(s).`;
-            }
+            await api.addMessage(chatId, 'user', content);
 
-            setMessages(prev => [
-                ...prev,
-                { role: 'assistant' as const, content: responseContent }
-            ]);
-        }, 1000);
-    }, [messages, customModelConfig, currentModel, isWebSearchEnabled]);
+            // Simulate AI response
+            setTimeout(async () => {
+                let responseContent = "I've received your message.";
+
+                if (customModelConfig && currentModel === 'custom') {
+                    responseContent = `[Using ${customModelConfig.name}] ${responseContent}`;
+                }
+
+                if (isWebSearchEnabled) {
+                    responseContent += " I also searched the web for relevant information.";
+                }
+                if (attachments.length > 0) {
+                    responseContent += ` I see you attached ${attachments.length} file(s).`;
+                }
+
+                await api.addMessage(chatId!, 'assistant', responseContent);
+
+                setMessages(prev => [
+                    ...prev,
+                    { role: 'assistant' as const, content: responseContent }
+                ]);
+            }, 1000);
+        } catch (error) {
+            console.error("Failed to save message", error);
+        }
+    }, [messages, customModelConfig, currentModel, isWebSearchEnabled, currentChatId, user]);
 
     const handleCustomModelSubmit = useCallback((name: string, apiKey: string) => {
         setCustomModelConfig({ name, apiKey });
@@ -57,6 +77,18 @@ const ChatInterface = () => {
 
     const handleNewChat = useCallback(() => {
         setMessages([]);
+        setCurrentChatId(null);
+    }, []);
+
+    const loadChat = useCallback(async (chatId: string) => {
+        try {
+            const chat = await api.getChat(chatId);
+            setCurrentChatId(chat.id);
+            setMessages(chat.messages?.map((m: any) => ({ role: m.role, content: m.content })) || []);
+            if (window.innerWidth < 768) setIsSidebarOpen(false);
+        } catch (error) {
+            console.error("Failed to load chat", error);
+        }
     }, []);
 
     const toggleSidebar = useCallback(() => {
@@ -84,7 +116,12 @@ const ChatInterface = () => {
             />
 
             <div className="flex flex-1 overflow-hidden relative">
-                <ChatSidebar isOpen={isSidebarOpen} onNewChat={handleNewChat} />
+                <ChatSidebar
+                    isOpen={isSidebarOpen}
+                    onNewChat={handleNewChat}
+                    onSelectChat={loadChat}
+                    refreshTrigger={refreshSidebarTrigger}
+                />
 
                 <main className="flex-1 flex flex-col relative min-w-0">
                     <div className="flex-1 overflow-hidden relative">
@@ -136,23 +173,6 @@ const EmptyState = ({ userName }: { userName: string }) => (
             </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl px-4">
-            <SuggestionCard
-                icon="🌍"
-                title="What's Happen in 24 hours?"
-                desc="See what's been happening in the world over the last 24 hours"
-            />
-            <SuggestionCard
-                icon="📈"
-                title="Stock market update"
-                desc="See what's happening in the stock market in real time"
-            />
-            <SuggestionCard
-                icon="📝"
-                title="Deep economic research"
-                desc="See research from experts that we have simplified"
-            />
-        </div>
     </div>
 );
 
