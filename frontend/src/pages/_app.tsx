@@ -1,22 +1,23 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { ClerkProvider } from '@clerk/nextjs';
 import { ThemeProvider } from "@/components/theme-provider";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ClerkProvider } from '@clerk/nextjs';
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ClerkProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <ErrorBoundary>
+      <Provider store={store}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <Component {...pageProps} />
-        </ErrorBoundary>
-      </ThemeProvider>
+        </ThemeProvider>
+      </Provider>
     </ClerkProvider>
   );
 }

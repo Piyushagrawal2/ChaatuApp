@@ -21,19 +21,13 @@ const ChatMessage = ({ role, content, attachments }: ChatMessageProps) => {
         >
             <Avatar className="h-8 w-8 border mt-1">
                 {role === 'assistant' ? (
-                    <>
-                        <AvatarImage src="/bot-avatar.png" />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                            <Bot size={16} />
-                        </AvatarFallback>
-                    </>
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                        🤖
+                    </AvatarFallback>
                 ) : (
-                    <>
-                        <AvatarImage src="/user-avatar.png" />
-                        <AvatarFallback className="bg-secondary text-secondary-foreground">
-                            <User size={16} />
-                        </AvatarFallback>
-                    </>
+                    <AvatarFallback className="bg-secondary text-secondary-foreground">
+                        <User />
+                    </AvatarFallback>
                 )}
             </Avatar>
 

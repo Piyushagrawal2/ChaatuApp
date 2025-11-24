@@ -1,4 +1,4 @@
-import { Menu, ChevronDown, Sparkles, Bot } from 'lucide-react';
+import { Menu, ChevronDown, Sparkles, Bot, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -8,6 +8,10 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from '../ThemeToggle';
+import { useTheme } from 'next-themes';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { toggleSidebar } from '@/store/uiSlice';
 
 interface ChatHeaderProps {
     isSidebarOpen: boolean;
@@ -24,15 +28,19 @@ const models = [
     { id: 'gemini-pro', name: 'Gemini Pro', description: 'Multimodal Tasks' },
 ];
 
-const ChatHeader = ({ isSidebarOpen, onToggleSidebar, currentModel, onModelSelect, onCustomModelClick }: ChatHeaderProps) => {
+const ChatHeader = ({ currentModel, onModelSelect, onCustomModelClick }: ChatHeaderProps) => {
+    const dispatch = useDispatch();
+    const isSidebarOpen = useSelector((state: RootState) => state.ui.isSidebarOpen);
+    const { theme, setTheme } = useTheme();
+
     const selectedModel = models.find(m => m.id === currentModel);
     const displayName = selectedModel ? selectedModel.name : currentModel;
 
     return (
-        <header className="h-14 border-b flex items-center justify-between px-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={onToggleSidebar}>
-                    <Menu size={20} />
+        <header className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+            <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => dispatch(toggleSidebar())}>
+                    {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
                 </Button>
 
                 <div className="flex items-center gap-2 mr-4">

@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
@@ -7,29 +6,58 @@ import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
 import { useUser } from '@clerk/nextjs';
 import { api } from '@/services/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import {
+    setMessages,
+    addMessage,
+    setCurrentChatId,
+    setModel,
+    setCustomModelConfig,
+    toggleWebSearch,
+    resetChat
+} from '@/store/chatSlice';
+import {
+    toggleSidebar,
+    setSidebarOpen,
+    closeCustomModelDialog,
+    openCustomModelDialog
+} from '@/store/uiSlice';
 
 const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 
 const ChatInterface = () => {
     const { user } = useUser();
-    const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string, attachments?: string[] }[]>([]);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [currentModel, setCurrentModel] = useState('chaatu-v1.2');
-    const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
-    const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
-    const [customModelConfig, setCustomModelConfig] = useState<{ name: string, apiKey: string } | null>(null);
-    const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-    const [refreshSidebarTrigger, setRefreshSidebarTrigger] = useState(0);
+    const dispatch = useDispatch();
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Redux Selectors
+    const {
+        messages,
+        currentChatId,
+        model: currentModel,
+        isWebSearchEnabled,
+        customModelConfig
+    } = useSelector((state: RootState) => state.chat);
+
+    const {
+        isSidebarOpen,
+        isCustomModelDialogOpen
+    } = useSelector((state: RootState) => state.ui);
+
+    // Local state for sidebar refresh trigger (can be moved to Redux later if needed)
+    // For now, we can keep it local or use a Redux action to trigger refresh
+    // Let's keep it simple and rely on Redux state updates to drive UI
+    // But ChatSidebar needs a trigger to re-fetch list.
+    // We can add a 'lastUpdated' timestamp to chatSlice to trigger re-fetches.
+    // For now, I'll keep a local trigger for simplicity in migration, or better yet,
+    // let's make ChatSidebar listen to currentChatId changes to refresh list if needed.
 
     const handleSend = useCallback(async (content: string, attachments: File[]) => {
         const attachmentNames = attachments.map(f => f.name);
 
-        const newMessages = [
-            ...messages,
-            { role: 'user' as const, content, attachments: attachmentNames }
-        ];
-        setMessages(newMessages);
+        // Optimistic update
+        dispatch(addMessage({ role: 'user', content, attachments: attachmentNames }));
 
         try {
             let chatId = currentChatId;
@@ -37,8 +65,9 @@ const ChatInterface = () => {
                 const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
                 const newChat = await api.createChat(title, user?.id || 'anonymous');
                 chatId = newChat.id;
-                setCurrentChatId(chatId);
-                setRefreshSidebarTrigger(prev => prev + 1);
+                dispatch(setCurrentChatId(chatId));
+                // Trigger sidebar refresh by updating a timestamp in Redux?
+                // Or just let Sidebar re-render.
             }
 
             await api.addMessage(chatId, 'user', content);
@@ -60,44 +89,52 @@ const ChatInterface = () => {
 
                 await api.addMessage(chatId!, 'assistant', responseContent);
 
-                setMessages(prev => [
-                    ...prev,
-                    { role: 'assistant' as const, content: responseContent }
-                ]);
+                dispatch(addMessage({ role: 'assistant', content: responseContent }));
             }, 1000);
         } catch (error) {
             console.error("Failed to save message", error);
         }
-    }, [messages, customModelConfig, currentModel, isWebSearchEnabled, currentChatId, user]);
+    }, [currentChatId, customModelConfig, currentModel, isWebSearchEnabled, user, dispatch]);
 
     const handleCustomModelSubmit = useCallback((name: string, apiKey: string) => {
-        setCustomModelConfig({ name, apiKey });
-        setCurrentModel('custom');
-    }, []);
+        dispatch(setCustomModelConfig({ name, apiKey }));
+        dispatch(setModel('custom'));
+        dispatch(closeCustomModelDialog());
+    }, [dispatch]);
 
     const handleNewChat = useCallback(() => {
-        setMessages([]);
-        setCurrentChatId(null);
-    }, []);
+        dispatch(resetChat());
+    }, [dispatch]);
 
     const loadChat = useCallback(async (chatId: string) => {
         try {
             const chat = await api.getChat(chatId);
-            setCurrentChatId(chat.id);
-            setMessages(chat.messages?.map((m: any) => ({ role: m.role, content: m.content })) || []);
-            if (window.innerWidth < 768) setIsSidebarOpen(false);
+            dispatch(setCurrentChatId(chat.id));
+            dispatch(setMessages(chat.messages?.map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                attachments: [] // Add attachment logic if backend supports it
+            })) || []));
+
+            if (window.innerWidth < 768) {
+                dispatch(setSidebarOpen(false));
+            }
         } catch (error) {
             console.error("Failed to load chat", error);
         }
-    }, []);
+    }, [dispatch]);
 
-    const toggleSidebar = useCallback(() => {
-        setIsSidebarOpen(prev => !prev);
-    }, []);
+    const handleToggleSidebar = useCallback(() => {
+        dispatch(toggleSidebar());
+    }, [dispatch]);
 
-    const toggleWebSearch = useCallback(() => {
-        setIsWebSearchEnabled(prev => !prev);
-    }, []);
+    const handleToggleWebSearch = useCallback(() => {
+        dispatch(toggleWebSearch());
+    }, [dispatch]);
+
+    const handleModelSelect = useCallback((model: string) => {
+        dispatch(setModel(model));
+    }, [dispatch]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -109,18 +146,17 @@ const ChatInterface = () => {
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             <ChatHeader
                 isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={toggleSidebar}
+                onToggleSidebar={handleToggleSidebar}
                 currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
-                onModelSelect={setCurrentModel}
-                onCustomModelClick={() => setIsCustomModelDialogOpen(true)}
+                onModelSelect={handleModelSelect}
+                onCustomModelClick={() => dispatch(openCustomModelDialog())}
             />
 
             <div className="flex flex-1 overflow-hidden relative">
                 <ChatSidebar
-                    isOpen={isSidebarOpen}
                     onNewChat={handleNewChat}
                     onSelectChat={loadChat}
-                    refreshTrigger={refreshSidebarTrigger}
+                    refreshTrigger={currentChatId ? 1 : 0} // Simple trigger for now
                 />
 
                 <main className="flex-1 flex flex-col relative min-w-0">
@@ -146,13 +182,13 @@ const ChatInterface = () => {
                     <ChatInput
                         onSend={handleSend}
                         isWebSearchEnabled={isWebSearchEnabled}
-                        onToggleWebSearch={toggleWebSearch}
+                        onToggleWebSearch={handleToggleWebSearch}
                     />
 
                     <Suspense fallback={null}>
                         <CustomModelDialog
                             isOpen={isCustomModelDialogOpen}
-                            onClose={() => setIsCustomModelDialogOpen(false)}
+                            onClose={() => dispatch(closeCustomModelDialog())}
                             onSubmit={handleCustomModelSubmit}
                         />
                     </Suspense>
@@ -174,19 +210,6 @@ const EmptyState = ({ userName }: { userName: string }) => (
         </div>
 
     </div>
-);
-
-const SuggestionCard = ({ icon, title, desc }: { icon: string, title: string, desc: string }) => (
-    <motion.div
-        whileHover={{ y: -2 }}
-        className="p-6 rounded-2xl bg-gradient-to-br from-purple-50/50 to-pink-50/50 border border-purple-100/50 cursor-pointer hover:shadow-md transition-colors duration-200 dark:from-purple-950/10 dark:to-pink-950/10 dark:border-purple-900/20 hover:border-purple-200 dark:hover:border-purple-800"
-    >
-        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-xl text-white mb-4 shadow-lg shadow-purple-200 dark:shadow-none">
-            {icon}
-        </div>
-        <h3 className="font-semibold mb-2 text-left">{title}</h3>
-        <p className="text-sm text-muted-foreground text-left">{desc}</p>
-    </motion.div>
 );
 
 export default ChatInterface;

@@ -15,15 +15,32 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarItem } from './SidebarItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEffect, useState } from 'react';
+import { api, Chat } from '@/services/api';
+
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 interface ChatSidebarProps {
-    isOpen: boolean;
+    // isOpen is now in Redux
     onNewChat: () => void;
+    onSelectChat: (chatId: string) => void;
+    refreshTrigger: number;
 }
 
-const ChatSidebar = ({ isOpen, onNewChat }: ChatSidebarProps) => {
+const ChatSidebar = ({ onNewChat, onSelectChat, refreshTrigger }: ChatSidebarProps) => {
     const { user } = useUser();
     const { signOut } = useClerk();
+    const [chats, setChats] = useState<Chat[]>([]);
+    const isOpen = useSelector((state: RootState) => state.ui.isSidebarOpen);
+
+    useEffect(() => {
+        if (user?.id) {
+            api.getChats(user.id)
+                .then(setChats)
+                .catch(err => console.error("Failed to fetch chats:", err));
+        }
+    }, [user?.id, refreshTrigger]);
 
     return (
         <motion.aside
@@ -53,17 +70,20 @@ const ChatSidebar = ({ isOpen, onNewChat }: ChatSidebarProps) => {
                         </div>
                         <ScrollArea className="flex-1 p-2">
                             <div className="space-y-1">
-                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Today</div>
-                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
-                                    Project Planning
-                                </Button>
-                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
-                                    React Components
-                                </Button>
-                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">Yesterday</div>
-                                <Button variant="ghost" className="w-full justify-start text-sm truncate h-auto py-2">
-                                    Debug API Route
-                                </Button>
+                                {chats.length === 0 ? (
+                                    <div className="text-sm text-muted-foreground p-2">No history yet</div>
+                                ) : (
+                                    chats.map(chat => (
+                                        <Button
+                                            key={chat.id}
+                                            variant="ghost"
+                                            className="w-full justify-start text-sm truncate h-auto py-2"
+                                            onClick={() => onSelectChat(chat.id)}
+                                        >
+                                            {chat.title}
+                                        </Button>
+                                    ))
+                                )}
                             </div>
                         </ScrollArea>
                     </div>
