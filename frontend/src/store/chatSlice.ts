@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Chat } from '@/services/api';
 
 export interface Message {
     role: 'user' | 'assistant';
@@ -13,6 +14,7 @@ export interface CustomModelConfig {
 
 interface ChatState {
     messages: Message[];
+    chats: Chat[];
     currentChatId: string | null;
     isLoading: boolean;
     model: string;
@@ -22,6 +24,7 @@ interface ChatState {
 
 const initialState: ChatState = {
     messages: [],
+    chats: [],
     currentChatId: null,
     isLoading: false,
     model: 'chaatu-v1.2',
@@ -38,6 +41,28 @@ const chatSlice = createSlice({
         },
         addMessage: (state, action: PayloadAction<Message>) => {
             state.messages.push(action.payload);
+        },
+        setChats: (state, action: PayloadAction<Chat[]>) => {
+            state.chats = action.payload;
+        },
+        addChat: (state, action: PayloadAction<Chat>) => {
+            state.chats.unshift(action.payload);
+        },
+        replaceChatId: (state, action: PayloadAction<{ tempId: string; realId: string }>) => {
+            const chat = state.chats.find(c => c.id === action.payload.tempId);
+            if (chat) {
+                chat.id = action.payload.realId;
+            }
+            if (state.currentChatId === action.payload.tempId) {
+                state.currentChatId = action.payload.realId;
+            }
+        },
+        removeChat: (state, action: PayloadAction<string>) => {
+            state.chats = state.chats.filter(c => c.id !== action.payload);
+            if (state.currentChatId === action.payload) {
+                state.currentChatId = null;
+                state.messages = [];
+            }
         },
         setCurrentChatId: (state, action: PayloadAction<string | null>) => {
             state.currentChatId = action.payload;
@@ -64,6 +89,10 @@ const chatSlice = createSlice({
 export const {
     setMessages,
     addMessage,
+    setChats,
+    addChat,
+    replaceChatId,
+    removeChat,
     setCurrentChatId,
     setLoading,
     setModel,

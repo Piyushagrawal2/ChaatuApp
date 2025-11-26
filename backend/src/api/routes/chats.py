@@ -42,13 +42,30 @@ async def create_chat(chat: ChatCreate, db: AsyncSession = Depends(get_db)):
     db.add(new_chat)
     await db.commit()
     await db.refresh(new_chat)
-    return new_chat
+    
+    # Manually construct response to avoid lazy loading of messages relationship
+    return ChatResponse(
+        id=new_chat.id,
+        title=new_chat.title,
+        created_at=new_chat.created_at,
+        messages=[]  # New chats have no messages
+    )
 
 @router.get("/", response_model=List[ChatResponse])
 async def get_chats(user_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Chat).where(Chat.user_id == user_id).order_by(Chat.created_at.desc()))
     chats = result.scalars().all()
-    return chats
+    
+    # Manually construct responses to avoid lazy loading
+    return [
+        ChatResponse(
+            id=chat.id,
+            title=chat.title,
+            created_at=chat.created_at,
+            messages=[]  # Don't load messages for chat list
+        )
+        for chat in chats
+    ]
 
 @router.get("/{chat_id}", response_model=ChatResponse)
 async def get_chat(chat_id: str, db: AsyncSession = Depends(get_db)):
@@ -60,8 +77,22 @@ async def get_chat(chat_id: str, db: AsyncSession = Depends(get_db)):
     # Eager load messages
     result_msgs = await db.execute(select(Message).where(Message.chat_id == chat_id).order_by(Message.created_at.asc()))
     messages = result_msgs.scalars().all()
-    chat.messages = messages
-    return chat
+    
+    # Manually construct response
+    return ChatResponse(
+        id=chat.id,
+        title=chat.title,
+        created_at=chat.created_at,
+        messages=[
+            MessageResponse(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                created_at=msg.created_at
+            )
+            for msg in messages
+        ]
+    )
 
 @router.post("/{chat_id}/messages", response_model=MessageResponse)
 async def add_message(chat_id: str, message: MessageCreate, db: AsyncSession = Depends(get_db)):

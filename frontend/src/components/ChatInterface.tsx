@@ -17,7 +17,11 @@ import {
     setModel,
     setCustomModelConfig,
     toggleWebSearch,
-    resetChat
+    resetChat,
+    setChats,
+    addChat,
+    replaceChatId,
+    removeChat
 } from '@/store/chatSlice';
 import {
     setSidebarOpen,
@@ -37,6 +41,15 @@ const ChatInterface = () => {
     useEffect(() => {
         setIsHydrated(true);
     }, []);
+
+    // Fetch chats on mount
+    useEffect(() => {
+        if (user?.id) {
+            api.getChats(user.id)
+                .then(chats => dispatch(setChats(chats)))
+                .catch(err => console.error("Failed to fetch chats:", err));
+        }
+    }, [user?.id, dispatch]);
 
     // Redux Selectors
     const {
@@ -62,9 +75,25 @@ const ChatInterface = () => {
             let chatId = currentChatId;
             if (!chatId) {
                 const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
-                const newChat = await api.createChat(title, user?.id || 'anonymous');
-                chatId = newChat.id;
-                dispatch(setCurrentChatId(chatId));
+                const tempId = `temp-${Date.now()}`;
+
+                // Optimistic chat creation
+                dispatch(addChat({
+                    id: tempId,
+                    title,
+                    created_at: new Date().toISOString(),
+                    messages: []
+                }));
+                dispatch(setCurrentChatId(tempId));
+
+                try {
+                    const newChat = await api.createChat(title, user?.id || 'anonymous');
+                    dispatch(replaceChatId({ tempId, realId: newChat.id }));
+                    chatId = newChat.id;
+                } catch (error) {
+                    dispatch(removeChat(tempId));
+                    throw error;
+                }
             }
 
             await api.addMessage(chatId, 'user', content);

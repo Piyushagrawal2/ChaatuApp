@@ -31,16 +31,8 @@ interface ChatSidebarProps {
 const ChatSidebar = ({ onNewChat, onSelectChat, refreshTrigger }: ChatSidebarProps) => {
     const { user } = useUser();
     const { signOut } = useClerk();
-    const [chats, setChats] = useState<Chat[]>([]);
+    const chats = useSelector((state: RootState) => state.chat.chats);
     const isOpen = useSelector((state: RootState) => state.ui.isSidebarOpen);
-
-    useEffect(() => {
-        if (user?.id) {
-            api.getChats(user.id)
-                .then(setChats)
-                .catch(err => console.error("Failed to fetch chats:", err));
-        }
-    }, [user?.id, refreshTrigger]);
 
     return (
         <motion.aside
