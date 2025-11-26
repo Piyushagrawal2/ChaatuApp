@@ -1,4 +1,5 @@
-import { useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+'use client'
+import { useRef, useEffect, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
@@ -18,13 +19,12 @@ import {
     resetChat
 } from '@/store/chatSlice';
 import {
-    toggleSidebar,
     setSidebarOpen,
     closeCustomModelDialog,
     openCustomModelDialog
 } from '@/store/uiSlice';
 
-const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
+import CustomModelDialog from './chat/CustomModelDialog';
 
 const ChatInterface = () => {
     const { user } = useUser();
@@ -124,10 +124,6 @@ const ChatInterface = () => {
         }
     }, [dispatch]);
 
-    const handleToggleSidebar = useCallback(() => {
-        dispatch(toggleSidebar());
-    }, [dispatch]);
-
     const handleToggleWebSearch = useCallback(() => {
         dispatch(toggleWebSearch());
     }, [dispatch]);
@@ -145,8 +141,6 @@ const ChatInterface = () => {
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             <ChatHeader
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={handleToggleSidebar}
                 currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
                 onModelSelect={handleModelSelect}
                 onCustomModelClick={() => dispatch(openCustomModelDialog())}
@@ -185,13 +179,11 @@ const ChatInterface = () => {
                         onToggleWebSearch={handleToggleWebSearch}
                     />
 
-                    <Suspense fallback={null}>
-                        <CustomModelDialog
-                            isOpen={isCustomModelDialogOpen}
-                            onClose={() => dispatch(closeCustomModelDialog())}
-                            onSubmit={handleCustomModelSubmit}
-                        />
-                    </Suspense>
+                    <CustomModelDialog
+                        isOpen={isCustomModelDialogOpen}
+                        onClose={() => dispatch(closeCustomModelDialog())}
+                        onSubmit={handleCustomModelSubmit}
+                    />
                 </main>
             </div>
         </div>
