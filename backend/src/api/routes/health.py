@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from config.settings import get_settings
+from ...config.settings import get_settings
 
 
 router = APIRouter(prefix="/api/health", tags=["health"])

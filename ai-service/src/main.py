@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from config.settings import get_settings
+from .config.settings import get_settings
 
 
 settings = get_settings()

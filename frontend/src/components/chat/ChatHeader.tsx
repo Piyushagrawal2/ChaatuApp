@@ -14,8 +14,6 @@ import { RootState } from '@/store/store';
 import { toggleSidebar } from '@/store/uiSlice';
 
 interface ChatHeaderProps {
-    isSidebarOpen: boolean;
-    onToggleSidebar: () => void;
     currentModel: string;
     onModelSelect: (model: string) => void;
     onCustomModelClick: () => void;

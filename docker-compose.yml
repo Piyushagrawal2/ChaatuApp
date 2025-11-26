@@ -16,6 +16,23 @@ services:
     networks:
       - chaatu-net
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: chaatu-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@chaatu.ai
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - chaatu-net
+
   redis:
     image: redis:7-alpine
     container_name: chaatu-redis
@@ -89,9 +106,6 @@ services:
       - .env
     ports:
       - "${FRONTEND_PORT}:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
     networks:
@@ -101,6 +115,8 @@ volumes:
   postgres_data:
   redis_data:
   chromadb_data:
+  pgadmin_data:
+
 
 networks:
   chaatu-net:

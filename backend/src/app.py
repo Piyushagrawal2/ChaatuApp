@@ -1,16 +1,24 @@
 """FastAPI application factory."""
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config.settings import get_settings
-from api.routes import health
+from .config.settings import get_settings
+from .api.routes import health, chats
+from .database.session import engine, Base
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI app."""
 
     settings = get_settings()
-    app = FastAPI(title="Chaatu Backend", version="0.1.0", docs_url="/docs")
+    app = FastAPI(title="Chaatu Backend", version="0.1.0", docs_url="/docs", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -21,6 +29,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(chats.router)
 
     return app
 
