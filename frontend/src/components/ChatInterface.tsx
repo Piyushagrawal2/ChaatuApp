@@ -1,5 +1,6 @@
-'use client'
-import { useRef, useEffect, useCallback } from 'react';
+"use client";
+
+import { useRef, useEffect, useCallback, lazy, Suspense, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
@@ -24,12 +25,18 @@ import {
     openCustomModelDialog
 } from '@/store/uiSlice';
 
-import CustomModelDialog from './chat/CustomModelDialog';
+const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 
 const ChatInterface = () => {
     const { user } = useUser();
     const dispatch = useDispatch();
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // ensure we only render lazy/Suspense after client hydration
+    const [isHydrated, setIsHydrated] = useState(false);
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     // Redux Selectors
     const {
@@ -45,14 +52,6 @@ const ChatInterface = () => {
         isCustomModelDialogOpen
     } = useSelector((state: RootState) => state.ui);
 
-    // Local state for sidebar refresh trigger (can be moved to Redux later if needed)
-    // For now, we can keep it local or use a Redux action to trigger refresh
-    // Let's keep it simple and rely on Redux state updates to drive UI
-    // But ChatSidebar needs a trigger to re-fetch list.
-    // We can add a 'lastUpdated' timestamp to chatSlice to trigger re-fetches.
-    // For now, I'll keep a local trigger for simplicity in migration, or better yet,
-    // let's make ChatSidebar listen to currentChatId changes to refresh list if needed.
-
     const handleSend = useCallback(async (content: string, attachments: File[]) => {
         const attachmentNames = attachments.map(f => f.name);
 
@@ -66,8 +65,6 @@ const ChatInterface = () => {
                 const newChat = await api.createChat(title, user?.id || 'anonymous');
                 chatId = newChat.id;
                 dispatch(setCurrentChatId(chatId));
-                // Trigger sidebar refresh by updating a timestamp in Redux?
-                // Or just let Sidebar re-render.
             }
 
             await api.addMessage(chatId, 'user', content);
@@ -116,7 +113,7 @@ const ChatInterface = () => {
                 attachments: [] // Add attachment logic if backend supports it
             })) || []));
 
-            if (window.innerWidth < 768) {
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
                 dispatch(setSidebarOpen(false));
             }
         } catch (error) {
@@ -179,11 +176,16 @@ const ChatInterface = () => {
                         onToggleWebSearch={handleToggleWebSearch}
                     />
 
-                    <CustomModelDialog
-                        isOpen={isCustomModelDialogOpen}
-                        onClose={() => dispatch(closeCustomModelDialog())}
-                        onSubmit={handleCustomModelSubmit}
-                    />
+                    {/* Only render lazy dialog after client hydration to avoid Suspense hydration race */}
+                    {isHydrated && (
+                        <Suspense fallback={null}>
+                            <CustomModelDialog
+                                isOpen={isCustomModelDialogOpen}
+                                onClose={() => dispatch(closeCustomModelDialog())}
+                                onSubmit={handleCustomModelSubmit}
+                            />
+                        </Suspense>
+                    )}
                 </main>
             </div>
         </div>
