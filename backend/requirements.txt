@@ -13,3 +13,4 @@ structlog==24.4.0
 aiosqlite==0.20.0
 greenlet==3.0.3
 asyncpg
+python-multipart==0.0.20

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
-    Plus, Search, LayoutDashboard, Folder, History, Compass, Bot,
-    Settings, LogOut, MessageSquare
+    Plus, LayoutDashboard, Folder, History, Compass,
+    Settings, LogOut
 } from 'lucide-react';
 import { useUser, useClerk } from '@clerk/nextjs';
 import {
@@ -15,20 +15,15 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarItem } from './SidebarItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEffect, useState } from 'react';
-import { api, Chat } from '@/services/api';
-
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 
 interface ChatSidebarProps {
-    // isOpen is now in Redux
     onNewChat: () => void;
     onSelectChat: (chatId: string) => void;
-    refreshTrigger: number;
 }
 
-const ChatSidebar = ({ onNewChat, onSelectChat, refreshTrigger }: ChatSidebarProps) => {
+const ChatSidebar = ({ onNewChat, onSelectChat }: ChatSidebarProps) => {
     const { user } = useUser();
     const { signOut } = useClerk();
     const chats = useSelector((state: RootState) => state.chat.chats);

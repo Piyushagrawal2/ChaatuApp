@@ -41,65 +41,210 @@ Shared schemas/constants are mounted into both Python services for consistent mo
 
 ## Getting Started
 
-### Prerequisites
+You have **two options** for running the project:
 
+### Option 1: Quick Dev Scripts (Recommended for Daily Development) ⚡
+
+Perfect for active development with fast startup and easy debugging.
+
+**Prerequisites:**
+- Docker Desktop (for databases)
+- Python 3.11+
+- Node.js 20+
+
+**Start Everything:**
+```bash
+./start-dev.sh
+```
+
+This single command will:
+- Start infrastructure (PostgreSQL, Redis, ChromaDB) via Docker
+- Set up backend dependencies automatically
+- Start backend server at http://localhost:8000
+- Set up frontend dependencies automatically
+- Start frontend at http://localhost:3000
+
+**Stop Everything:**
+```bash
+./stop-dev.sh
+```
+
+**View Logs:**
+```bash
+# Backend logs
+tail -f /tmp/chaatu-backend.log
+
+# Frontend logs
+tail -f /tmp/chaatu-frontend.log
+```
+
+---
+
+### Option 2: Full Docker Stack (Production-like Environment) 🐳
+
+Best for testing the complete stack or ensuring consistency across environments.
+
+**Prerequisites:**
 - Docker & Docker Compose v2+
-- Node.js 20+ (for local frontend dev outside Docker)
-- Python 3.11+ (optional local service dev)
 
-### Environment Variables
+**Environment Variables:**
 
 Copy `.env.example` to `.env` and update secrets:
-
 ```bash
 cp .env.example .env
 ```
 
-Key values:
-
-- `API_KEY_HEADER` / `API_KEY_VALUE` – backend authentication
-- `GEMINI_API_KEY` / `GEMINI_MODEL_*` – primary + fallback LLMs
-- `TAVILY_API_KEY`, `SERPAPI_API_KEY` – external search
-- `POSTGRES_*`, `REDIS_*`, `CHROMADB_*` – infra endpoints
-
-### Run the Stack
+**Quick Commands:**
 
 ```bash
-docker compose up --build
+# Start all services
+./dev.sh up
+
+# Stop all services
+./dev.sh down
+
+# View logs
+./dev.sh logs
+
+# View specific service logs
+./dev.sh logs backend
+
+# Restart services
+./dev.sh restart
+
+# Rebuild images
+./dev.sh build
+
+# Clean up everything
+./dev.sh clean
 ```
 
-Services:
+**Manual Docker Compose:**
+```bash
+# Start all services
+docker compose up -d
 
-- Backend FastAPI: http://localhost:8000/api/health/ping
-- AI Service: http://localhost:9000/health
-- Frontend: http://localhost:3000
-- Postgres: localhost:5432
-- Redis: localhost:6379
-- ChromaDB: localhost:8000 (REST/gRPC)
+# Stop all services
+docker compose down
 
-### Local Development (optional)
+# View logs
+docker compose logs -f
+```
 
-Backend:
+---
 
+## Service Endpoints
+
+Once running, access the services at:
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **Backend Docs**: http://localhost:8000/docs
+- **PgAdmin**: http://localhost:5050 (admin@chaatu.ai / admin123)
+- **PostgreSQL**: localhost:5432
+- **Redis**: localhost:6379
+- **ChromaDB**: localhost:8001
+
+---
+
+## Development Workflow
+
+### Making Code Changes
+
+**Backend changes:**
+- Files are watched automatically with `--reload`
+- Server restarts on save
+
+**Frontend changes:**
+- Next.js hot reload is active
+- Changes appear immediately in browser
+
+### Adding Dependencies
+
+**Backend:**
 ```bash
 cd backend
-uvicorn src.main:app --reload
+source venv/bin/activate
+pip install <package>
+pip freeze > requirements.txt
 ```
 
-AI Service:
-
-```bash
-cd ai-service
-uvicorn src.main:app --reload --port 9000
-```
-
-Frontend:
-
+**Frontend:**
 ```bash
 cd frontend
-npm install
-npm run dev
+npm install <package>
 ```
+
+### Database Operations
+
+**Access PostgreSQL:**
+```bash
+# With Docker
+./dev.sh db
+
+# Or manually
+docker compose exec postgres psql -U postgres -d chaatu
+```
+
+**View with PgAdmin:**
+- Open http://localhost:5050
+- Login: admin@chaatu.ai / admin123
+
+---
+
+## Troubleshooting
+
+### Backend won't start
+
+```bash
+# Reinstall dependencies
+cd backend
+./setup.sh
+```
+
+### Frontend won't start
+
+```bash
+# Reinstall dependencies
+cd frontend
+./setup.sh
+```
+
+### Port already in use
+
+```bash
+# Check what's using port 8000
+lsof -i :8000
+
+# Kill the process
+kill -9 <PID>
+```
+
+### Docker issues
+
+```bash
+# Clean up and restart
+./dev.sh clean
+./dev.sh up
+```
+
+### Reset everything
+
+```bash
+# Stop all services
+./stop-dev.sh
+
+# Clean Docker
+./dev.sh clean
+
+# Remove virtual environments
+rm -rf backend/venv frontend/node_modules
+
+# Start fresh
+./start-dev.sh
+```
+
+---
 
 ## Testing
 

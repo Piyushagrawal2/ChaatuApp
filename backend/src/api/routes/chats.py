@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
@@ -106,3 +106,14 @@ async def add_message(chat_id: str, message: MessageCreate, db: AsyncSession = D
     await db.commit()
     await db.refresh(new_message)
     return new_message
+
+
+@router.delete("/{chat_id}", status_code=204)
+async def delete_chat(chat_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Chat).where(Chat.id == chat_id))
+    chat = result.scalar_one_or_none()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    await db.delete(chat)
+    await db.commit()
+    return Response(status_code=204)

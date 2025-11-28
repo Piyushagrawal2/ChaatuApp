@@ -2,181 +2,199 @@
 
 import { useRef, useEffect, useCallback, lazy, Suspense, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useUser } from '@clerk/nextjs';
+import { useDispatch, useSelector } from 'react-redux';
+import { nanoid } from 'nanoid/non-secure';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
 import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
-import { useUser } from '@clerk/nextjs';
+import DocumentUpload from './DocumentUpload';
+import SettingsPanel from './Settings';
 import { api } from '@/services/api';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
+import { getChatWebSocketClient, InboundSocketMessage } from '@/services/websocket';
 import {
     setMessages,
     addMessage,
+    setChats,
+    addChat,
+    upsertChat,
     setCurrentChatId,
     setModel,
     setCustomModelConfig,
     toggleWebSearch,
     resetChat,
-    setChats,
-    addChat,
-    replaceChatId,
-    removeChat
+    updateMessage,
+    appendToMessage,
+    setStreaming,
 } from '@/store/chatSlice';
-import {
-    setSidebarOpen,
-    closeCustomModelDialog,
-    openCustomModelDialog
-} from '@/store/uiSlice';
+import { RootState } from '@/store/store';
+import { closeCustomModelDialog, openCustomModelDialog } from '@/store/uiSlice';
 
 const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 
 const ChatInterface = () => {
     const { user } = useUser();
-    const dispatch = useDispatch();
     const router = useRouter();
+    const dispatch = useDispatch();
     const scrollRef = useRef<HTMLDivElement>(null);
-
-    // ensure we only render lazy/Suspense after client hydration
+    const wsClientRef = useRef<ReturnType<typeof getChatWebSocketClient> | null>(null);
     const [isHydrated, setIsHydrated] = useState(false);
-    useEffect(() => {
-        setIsHydrated(true);
-    }, []);
 
-    // Redux Selectors
     const {
         messages,
         currentChatId,
-        model: currentModel,
+        model,
+        temperature,
+        customModelConfig,
         isWebSearchEnabled,
-        customModelConfig
     } = useSelector((state: RootState) => state.chat);
+    const isCustomModelDialogOpen = useSelector((state: RootState) => state.ui.isCustomModelDialogOpen);
 
-    const {
-        isSidebarOpen,
-        isCustomModelDialogOpen
-    } = useSelector((state: RootState) => state.ui);
-
-    // Fetch chats on mount
     useEffect(() => {
-        if (user?.id) {
-            api.getChats(user.id)
-                .then(chats => dispatch(setChats(chats)))
-                .catch(err => console.error("Failed to fetch chats:", err));
-        }
-    }, [user?.id, dispatch]);
+        setIsHydrated(true);
+    }, []);
 
     const loadChat = useCallback(async (chatId: string) => {
         try {
             const chat = await api.getChat(chatId);
             dispatch(setCurrentChatId(chat.id));
-
-            // Update URL if not already there
-            // Update URL if not already there
-            const { index } = router.query;
-            const currentUrlId = Array.isArray(index) ? index[0] : undefined;
-
-            if (currentUrlId !== chat.id) {
-                console.log("Updating URL to:", `/chat/${chat.id}`);
-                router.push(`/chat/${chat.id}`);
-            }
-            dispatch(setMessages(chat.messages?.map((m: any) => ({
-                role: m.role,
-                content: m.content,
-                attachments: [] // Add attachment logic if backend supports it
-            })) || []));
-
-            if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                dispatch(setSidebarOpen(false));
+            dispatch(upsertChat(chat));
+            dispatch(setMessages(
+                (chat.messages || []).map(message => ({
+                    id: message.id,
+                    role: message.role as 'user' | 'assistant' | 'system',
+                    content: message.content,
+                    createdAt: message.created_at,
+                    status: 'complete',
+                }))
+            ));
+            if (router.pathname === '/chat/[[...index]]') {
+                router.push(`/chat/${chat.id}`, undefined, { shallow: true });
             }
         } catch (error) {
-            console.error("Failed to load chat", error);
+            console.error('Failed to load chat', error);
         }
-    }, [dispatch, router]);
+    }, [router, dispatch]);
 
-    // Sync with URL
     useEffect(() => {
-        // For catch-all route [[...index]], router.query.index is an array of path segments
-        // e.g. /chat/123 -> index: ['123']
-        // e.g. /chat -> index: undefined
+        if (!user?.id) return;
+        api.getChats(user.id)
+            .then(chatsResponse => dispatch(setChats(chatsResponse)))
+            .catch(error => console.error('Failed to fetch chats', error));
+    }, [user?.id, dispatch]);
+
+    useEffect(() => {
         const { index } = router.query;
         const chatId = Array.isArray(index) ? index[0] : undefined;
 
         if (chatId && chatId !== currentChatId) {
-            // If URL has an ID and it's different from current, load it
             loadChat(chatId);
         } else if (!chatId && currentChatId) {
-            // If URL has no ID but we have one in state, check if we should reset
-            // Only reset if we are explicitly at /chat (no ID)
-            if (router.pathname === '/chat/[[...index]]' && !index) {
-                dispatch(resetChat());
-            }
+            dispatch(resetChat());
         }
-    }, [router.query, router.pathname, dispatch, currentChatId, loadChat]);
+    }, [router.query, router.pathname, currentChatId, loadChat, dispatch]);
+
+    const ensureConversation = useCallback(async (initialMessage: string) => {
+        if (currentChatId) return currentChatId;
+        const title = initialMessage.trim().slice(0, 40) || 'New chat';
+        const chat = await api.createChat(title, user?.id || 'anonymous');
+        dispatch(addChat(chat));
+        dispatch(setCurrentChatId(chat.id));
+        router.push(`/chat/${chat.id}`);
+        return chat.id;
+    }, [currentChatId, dispatch, router, user?.id]);
 
     const handleSend = useCallback(async (content: string, attachments: File[]) => {
-        const attachmentNames = attachments.map(f => f.name);
-
-        // Optimistic update
-        dispatch(addMessage({ role: 'user', content, attachments: attachmentNames }));
-
+        if (!content.trim()) return;
         try {
-            let chatId = currentChatId;
-            let isNewChat = false;
-            if (!chatId) {
-                const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
-                const tempId = `temp-${Date.now()}`;
+            const conversationId = await ensureConversation(content);
+            const attachmentNames = attachments.map(file => file.name);
+            dispatch(addMessage({
+                id: nanoid(),
+                role: 'user',
+                content,
+                attachments: attachmentNames,
+                status: 'complete',
+            }));
+            await api.addMessage(conversationId, 'user', content);
 
-                // Optimistic chat creation
-                dispatch(addChat({
-                    id: tempId,
-                    title,
-                    created_at: new Date().toISOString(),
-                    messages: []
-                }));
-                dispatch(setCurrentChatId(tempId));
-
-                try {
-                    const newChat = await api.createChat(title, user?.id || 'anonymous');
-                    dispatch(replaceChatId({ tempId, realId: newChat.id }));
-                    chatId = newChat.id;
-                    isNewChat = true;
-                } catch (error) {
-                    dispatch(removeChat(tempId));
-                    throw error;
-                }
-            }
-
-            await api.addMessage(chatId, 'user', content);
-
-            if (isNewChat) {
-                router.push(`/chat/${chatId}`);
-            }
-
-            // Simulate AI response
-            setTimeout(async () => {
-                let responseContent = "I've received your message.";
-
-                if (customModelConfig && currentModel === 'custom') {
-                    responseContent = `[Using ${customModelConfig.name}] ${responseContent}`;
-                }
-
-                if (isWebSearchEnabled) {
-                    responseContent += " I also searched the web for relevant information.";
-                }
-                if (attachments.length > 0) {
-                    responseContent += ` I see you attached ${attachments.length} file(s).`;
-                }
-
-                await api.addMessage(chatId!, 'assistant', responseContent);
-
-                dispatch(addMessage({ role: 'assistant', content: responseContent }));
-            }, 1000);
+            const wsClient = getChatWebSocketClient();
+            wsClientRef.current = wsClient;
+            wsClient.connect(conversationId);
+            const assistantMessageId = nanoid();
+            dispatch(addMessage({
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                status: 'streaming',
+            }));
+            dispatch(setStreaming(true));
+            wsClient.send({
+                event: 'user_message',
+                content,
+                metadata: {
+                    message_id: assistantMessageId,
+                    model,
+                    temperature,
+                    web_search: isWebSearchEnabled,
+                },
+            });
         } catch (error) {
-            console.error("Failed to save message", error);
+            console.error('Failed to send message', error);
         }
-    }, [currentChatId, customModelConfig, currentModel, isWebSearchEnabled, user, dispatch, router]);
+    }, [dispatch, ensureConversation, model, temperature, isWebSearchEnabled]);
+
+    const handleWebSocketMessage = useCallback((payload: InboundSocketMessage) => {
+        switch (payload.event) {
+            case 'assistant_message_started':
+                dispatch(updateMessage({ id: payload.message_id, patch: { status: 'streaming' } }));
+                break;
+            case 'assistant_message_chunk':
+                dispatch(appendToMessage({ id: payload.message_id, delta: payload.delta }));
+                break;
+            case 'assistant_message_completed':
+                dispatch(updateMessage({
+                    id: payload.message_id,
+                    patch: {
+                        content: payload.content,
+                        status: 'complete',
+                        sources: (payload.sources || []) as any,
+                    },
+                }));
+                dispatch(setStreaming(false));
+                break;
+            case 'error':
+                dispatch(setStreaming(false));
+                break;
+            default:
+                break;
+        }
+    }, [dispatch]);
+
+    useEffect(() => {
+        if (!currentChatId) return;
+        const wsClient = getChatWebSocketClient();
+        wsClientRef.current = wsClient;
+        wsClient.connect(currentChatId);
+
+        const offMessage = wsClient.on('message', handleWebSocketMessage);
+        const offClose = wsClient.on('close', () => dispatch(setStreaming(false)));
+        const offError = wsClient.on('error', () => dispatch(setStreaming(false)));
+
+        return () => {
+            offMessage();
+            offClose();
+            offError();
+        };
+    }, [currentChatId, handleWebSocketMessage, dispatch]);
+
+    useEffect(() => {
+        return () => {
+            wsClientRef.current?.close();
+        };
+    }, []);
 
     const handleCustomModelSubmit = useCallback((name: string, apiKey: string) => {
         dispatch(setCustomModelConfig({ name, apiKey }));
@@ -184,18 +202,17 @@ const ChatInterface = () => {
         dispatch(closeCustomModelDialog());
     }, [dispatch]);
 
+    const handleModelSelect = useCallback((nextModel: string) => {
+        dispatch(setModel(nextModel));
+        if (nextModel !== 'custom') {
+            dispatch(setCustomModelConfig(null));
+        }
+    }, [dispatch]);
+
     const handleNewChat = useCallback(() => {
         dispatch(resetChat());
         router.push('/chat');
     }, [dispatch, router]);
-
-    const handleToggleWebSearch = useCallback(() => {
-        dispatch(toggleWebSearch());
-    }, [dispatch]);
-
-    const handleModelSelect = useCallback((model: string) => {
-        dispatch(setModel(model));
-    }, [dispatch]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -203,34 +220,38 @@ const ChatInterface = () => {
         }
     }, [messages]);
 
+    const currentModelName = model === 'custom' && customModelConfig
+        ? customModelConfig.name
+        : model;
+
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
             <ChatHeader
-                currentModel={currentModel === 'custom' && customModelConfig ? customModelConfig.name : currentModel}
+                currentModel={currentModelName}
                 onModelSelect={handleModelSelect}
                 onCustomModelClick={() => dispatch(openCustomModelDialog())}
             />
 
-            <div className="flex flex-1 overflow-hidden relative">
+            <div className="flex flex-1 overflow-hidden">
                 <ChatSidebar
                     onNewChat={handleNewChat}
                     onSelectChat={loadChat}
-                    refreshTrigger={currentChatId ? 1 : 0} // Simple trigger for now
                 />
 
-                <main className="flex-1 flex flex-col relative min-w-0">
-                    <div className="flex-1 overflow-hidden relative">
-                        <ScrollArea className="h-full p-4" ref={scrollRef}>
-                            <div className="max-w-3xl mx-auto space-y-6 py-8">
+                <main className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full p-4">
+                            <div ref={scrollRef} className="max-w-3xl mx-auto space-y-6 py-8">
                                 {messages.length === 0 ? (
-                                    <EmptyState userName={user?.firstName || 'User'} />
+                                    <EmptyState userName={user?.firstName || 'Friend'} />
                                 ) : (
-                                    messages.map((msg, i) => (
+                                    messages.map(message => (
                                         <ChatMessage
-                                            key={i}
-                                            role={msg.role}
-                                            content={msg.content}
-                                            attachments={msg.attachments}
+                                            key={message.id}
+                                            role={message.role}
+                                            content={message.content}
+                                            attachments={message.attachments}
+                                            sources={message.sources}
                                         />
                                     ))
                                 )}
@@ -238,13 +259,15 @@ const ChatInterface = () => {
                         </ScrollArea>
                     </div>
 
-                    <ChatInput
-                        onSend={handleSend}
-                        isWebSearchEnabled={isWebSearchEnabled}
-                        onToggleWebSearch={handleToggleWebSearch}
-                    />
+                    <div className="px-4 space-y-4 pb-4">
+                        <DocumentUpload conversationId={currentChatId} />
+                        <ChatInput
+                            onSend={handleSend}
+                            isWebSearchEnabled={isWebSearchEnabled}
+                            onToggleWebSearch={() => dispatch(toggleWebSearch())}
+                        />
+                    </div>
 
-                    {/* Only render lazy dialog after client hydration to avoid Suspense hydration race */}
                     {isHydrated && (
                         <Suspense fallback={null}>
                             <CustomModelDialog
@@ -255,6 +278,10 @@ const ChatInterface = () => {
                         </Suspense>
                     )}
                 </main>
+
+                <aside className="hidden xl:block w-[320px] border-l bg-background/70 overflow-y-auto p-4">
+                    <SettingsPanel />
+                </aside>
             </div>
         </div>
     );
@@ -267,10 +294,9 @@ const EmptyState = ({ userName }: { userName: string }) => (
                 Hello {userName}
             </h1>
             <h2 className="text-3xl font-semibold text-muted-foreground">
-                How can I help you today?
+                Drop a document or start chatting to begin.
             </h2>
         </div>
-
     </div>
 );
 

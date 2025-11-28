@@ -1,4 +1,4 @@
-import { Menu, ChevronDown, Sparkles, Bot, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, Sparkles, Bot, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -8,7 +8,6 @@ import {
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from '../ThemeToggle';
-import { useTheme } from 'next-themes';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { toggleSidebar } from '@/store/uiSlice';
@@ -20,7 +19,7 @@ interface ChatHeaderProps {
 }
 
 const models = [
-    { id: 'Chaatu-v1.2', name: 'Chaatu V 1.2', description: 'Fastest & Most Capable' },
+    { id: 'chaatu-v1.2', name: 'Chaatu V 1.2', description: 'Fastest & Most Capable' },
     { id: 'gpt-4', name: 'GPT-4 Turbo', description: 'Complex Reasoning' },
     { id: 'claude-3', name: 'Claude 3 Opus', description: 'Creative Writing' },
     { id: 'gemini-pro', name: 'Gemini Pro', description: 'Multimodal Tasks' },
@@ -29,7 +28,6 @@ const models = [
 const ChatHeader = ({ currentModel, onModelSelect, onCustomModelClick }: ChatHeaderProps) => {
     const dispatch = useDispatch();
     const isSidebarOpen = useSelector((state: RootState) => state.ui.isSidebarOpen);
-    const { theme, setTheme } = useTheme();
 
     const selectedModel = models.find(m => m.id === currentModel);
     const displayName = selectedModel ? selectedModel.name : currentModel;
