@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback, lazy, Suspense, useState } from 'react';
+import { useRouter } from 'next/router';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
@@ -34,6 +35,7 @@ const CustomModelDialog = lazy(() => import('./chat/CustomModelDialog'));
 const ChatInterface = () => {
     const { user } = useUser();
     const dispatch = useDispatch();
+    const router = useRouter();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // ensure we only render lazy/Suspense after client hydration
@@ -41,15 +43,6 @@ const ChatInterface = () => {
     useEffect(() => {
         setIsHydrated(true);
     }, []);
-
-    // Fetch chats on mount
-    useEffect(() => {
-        if (user?.id) {
-            api.getChats(user.id)
-                .then(chats => dispatch(setChats(chats)))
-                .catch(err => console.error("Failed to fetch chats:", err));
-        }
-    }, [user?.id, dispatch]);
 
     // Redux Selectors
     const {
@@ -65,6 +58,63 @@ const ChatInterface = () => {
         isCustomModelDialogOpen
     } = useSelector((state: RootState) => state.ui);
 
+    // Fetch chats on mount
+    useEffect(() => {
+        if (user?.id) {
+            api.getChats(user.id)
+                .then(chats => dispatch(setChats(chats)))
+                .catch(err => console.error("Failed to fetch chats:", err));
+        }
+    }, [user?.id, dispatch]);
+
+    const loadChat = useCallback(async (chatId: string) => {
+        try {
+            const chat = await api.getChat(chatId);
+            dispatch(setCurrentChatId(chat.id));
+
+            // Update URL if not already there
+            // Update URL if not already there
+            const { index } = router.query;
+            const currentUrlId = Array.isArray(index) ? index[0] : undefined;
+
+            if (currentUrlId !== chat.id) {
+                console.log("Updating URL to:", `/chat/${chat.id}`);
+                router.push(`/chat/${chat.id}`);
+            }
+            dispatch(setMessages(chat.messages?.map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                attachments: [] // Add attachment logic if backend supports it
+            })) || []));
+
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                dispatch(setSidebarOpen(false));
+            }
+        } catch (error) {
+            console.error("Failed to load chat", error);
+        }
+    }, [dispatch, router]);
+
+    // Sync with URL
+    useEffect(() => {
+        // For catch-all route [[...index]], router.query.index is an array of path segments
+        // e.g. /chat/123 -> index: ['123']
+        // e.g. /chat -> index: undefined
+        const { index } = router.query;
+        const chatId = Array.isArray(index) ? index[0] : undefined;
+
+        if (chatId && chatId !== currentChatId) {
+            // If URL has an ID and it's different from current, load it
+            loadChat(chatId);
+        } else if (!chatId && currentChatId) {
+            // If URL has no ID but we have one in state, check if we should reset
+            // Only reset if we are explicitly at /chat (no ID)
+            if (router.pathname === '/chat/[[...index]]' && !index) {
+                dispatch(resetChat());
+            }
+        }
+    }, [router.query, router.pathname, dispatch, currentChatId, loadChat]);
+
     const handleSend = useCallback(async (content: string, attachments: File[]) => {
         const attachmentNames = attachments.map(f => f.name);
 
@@ -73,6 +123,7 @@ const ChatInterface = () => {
 
         try {
             let chatId = currentChatId;
+            let isNewChat = false;
             if (!chatId) {
                 const title = content.length > 30 ? content.substring(0, 30) + "..." : content;
                 const tempId = `temp-${Date.now()}`;
@@ -90,6 +141,7 @@ const ChatInterface = () => {
                     const newChat = await api.createChat(title, user?.id || 'anonymous');
                     dispatch(replaceChatId({ tempId, realId: newChat.id }));
                     chatId = newChat.id;
+                    isNewChat = true;
                 } catch (error) {
                     dispatch(removeChat(tempId));
                     throw error;
@@ -97,6 +149,10 @@ const ChatInterface = () => {
             }
 
             await api.addMessage(chatId, 'user', content);
+
+            if (isNewChat) {
+                router.push(`/chat/${chatId}`);
+            }
 
             // Simulate AI response
             setTimeout(async () => {
@@ -120,7 +176,7 @@ const ChatInterface = () => {
         } catch (error) {
             console.error("Failed to save message", error);
         }
-    }, [currentChatId, customModelConfig, currentModel, isWebSearchEnabled, user, dispatch]);
+    }, [currentChatId, customModelConfig, currentModel, isWebSearchEnabled, user, dispatch, router]);
 
     const handleCustomModelSubmit = useCallback((name: string, apiKey: string) => {
         dispatch(setCustomModelConfig({ name, apiKey }));
@@ -130,25 +186,8 @@ const ChatInterface = () => {
 
     const handleNewChat = useCallback(() => {
         dispatch(resetChat());
-    }, [dispatch]);
-
-    const loadChat = useCallback(async (chatId: string) => {
-        try {
-            const chat = await api.getChat(chatId);
-            dispatch(setCurrentChatId(chat.id));
-            dispatch(setMessages(chat.messages?.map((m: any) => ({
-                role: m.role,
-                content: m.content,
-                attachments: [] // Add attachment logic if backend supports it
-            })) || []));
-
-            if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                dispatch(setSidebarOpen(false));
-            }
-        } catch (error) {
-            console.error("Failed to load chat", error);
-        }
-    }, [dispatch]);
+        router.push('/chat');
+    }, [dispatch, router]);
 
     const handleToggleWebSearch = useCallback(() => {
         dispatch(toggleWebSearch());
