@@ -8,7 +8,6 @@ const MODELS = [
     { id: 'chaatu-v1.2', label: 'Chaatu v1.2', description: 'Balanced performance' },
     { id: 'gpt-4o', label: 'GPT-4o', description: 'Reasoning & creativity' },
     { id: 'claude-3-haiku', label: 'Claude 3 Haiku', description: 'Fast and efficient' },
-    { id: 'custom', label: 'Custom API', description: 'Bring your own key' },
 ];
 
 const SettingsPanel = () => {
@@ -45,14 +44,7 @@ const SettingsPanel = () => {
                         </button>
                     ))}
                 </div>
-                {selectedModel?.id === 'custom' && (
-                    <input
-                        className="w-full rounded-lg border px-3 py-2 text-sm"
-                        placeholder="sk-live-..."
-                        value={customModelConfig?.apiKey ?? ''}
-                        onChange={(event) => dispatch(setCustomModelConfig({ name: customModelConfig?.name || 'Custom Model', apiKey: event.target.value }))}
-                    />
-                )}
+
             </section>
 
             <section className="rounded-2xl border p-4 space-y-4">

@@ -10,8 +10,7 @@ import ChatSidebar from './chat/ChatSidebar';
 import ChatHeader from './chat/ChatHeader';
 import ChatInput from './chat/ChatInput';
 import ChatMessage from './chat/ChatMessage';
-import DocumentUpload from './DocumentUpload';
-import SettingsPanel from './Settings';
+
 import { api } from '@/services/api';
 import { getChatWebSocketClient, InboundSocketMessage } from '@/services/websocket';
 import {
@@ -70,13 +69,10 @@ const ChatInterface = () => {
                     status: 'complete',
                 }))
             ));
-            if (router.pathname === '/chat/[[...index]]') {
-                router.push(`/chat/${chat.id}`, undefined, { shallow: true });
-            }
         } catch (error) {
             console.error('Failed to load chat', error);
         }
-    }, [router, dispatch]);
+    }, [dispatch]);
 
     useEffect(() => {
         if (!user?.id) return;
@@ -187,6 +183,7 @@ const ChatInterface = () => {
             offMessage();
             offClose();
             offError();
+            wsClient.close();
         };
     }, [currentChatId, handleWebSocketMessage, dispatch]);
 
@@ -235,7 +232,7 @@ const ChatInterface = () => {
             <div className="flex flex-1 overflow-hidden">
                 <ChatSidebar
                     onNewChat={handleNewChat}
-                    onSelectChat={loadChat}
+                    onSelectChat={(chatId) => router.push(`/chat/${chatId}`)}
                 />
 
                 <main className="flex-1 flex flex-col min-w-0">
@@ -260,7 +257,7 @@ const ChatInterface = () => {
                     </div>
 
                     <div className="px-4 space-y-4 pb-4">
-                        <DocumentUpload conversationId={currentChatId} />
+
                         <ChatInput
                             onSend={handleSend}
                             isWebSearchEnabled={isWebSearchEnabled}
@@ -279,9 +276,7 @@ const ChatInterface = () => {
                     )}
                 </main>
 
-                <aside className="hidden xl:block w-[320px] border-l bg-background/70 overflow-y-auto p-4">
-                    <SettingsPanel />
-                </aside>
+
             </div>
         </div>
     );

@@ -5,7 +5,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database.session import get_db
+from ...database.session import AsyncSessionLocal
 from ...models.chat import Chat, Message
 
 router = APIRouter()
@@ -32,10 +32,13 @@ async def ensure_chat_exists(db: AsyncSession, chat_id: str) -> Chat:
 
 
 @router.websocket("/ws/chat/{conversation_id}")
-async def chat_websocket(websocket: WebSocket, conversation_id: str, db: AsyncSession = Depends(get_db)):
+async def chat_websocket(websocket: WebSocket, conversation_id: str):
     await websocket.accept()
     await websocket.send_json({"event": "connected", "conversation_id": conversation_id})
-    await ensure_chat_exists(db, conversation_id)
+    
+    async with AsyncSessionLocal() as db:
+        await ensure_chat_exists(db, conversation_id)
+
     try:
         while True:
             payload: Dict[str, Any] = await websocket.receive_json()
@@ -43,17 +46,21 @@ async def chat_websocket(websocket: WebSocket, conversation_id: str, db: AsyncSe
                 continue
             content = payload.get("content", "")
             metadata = payload.get("metadata", {}) or {}
-            user_message = Message(chat_id=conversation_id, role="user", content=content)
-            db.add(user_message)
-            await db.commit()
-            await db.refresh(user_message)
+            
+            assistant_message_id = None
 
-            assistant_message = Message(chat_id=conversation_id, role="assistant", content="")
-            db.add(assistant_message)
-            await db.commit()
-            await db.refresh(assistant_message)
+            async with AsyncSessionLocal() as db:
+                user_message = Message(chat_id=conversation_id, role="user", content=content)
+                db.add(user_message)
+                
+                assistant_message = Message(chat_id=conversation_id, role="assistant", content="")
+                db.add(assistant_message)
+                
+                await db.commit()
+                await db.refresh(assistant_message)
+                assistant_message_id = assistant_message.id
 
-            awaited_message_id = metadata.get("message_id") or assistant_message.id
+            awaited_message_id = metadata.get("message_id") or assistant_message_id
             await websocket.send_json({
                 "event": "assistant_message_started",
                 "message_id": awaited_message_id,
@@ -68,8 +75,11 @@ async def chat_websocket(websocket: WebSocket, conversation_id: str, db: AsyncSe
                     "delta": chunk,
                 })
 
-            assistant_message.content = streamed_content.strip()
-            await db.commit()
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(Message).where(Message.id == assistant_message_id))
+                msg = result.scalar_one()
+                msg.content = streamed_content.strip()
+                await db.commit()
 
             sources = [
                 {
@@ -82,12 +92,16 @@ async def chat_websocket(websocket: WebSocket, conversation_id: str, db: AsyncSe
             await websocket.send_json({
                 "event": "assistant_message_completed",
                 "message_id": awaited_message_id,
-                "content": assistant_message.content,
+                "content": streamed_content.strip(),
                 "sources": sources,
             })
     except WebSocketDisconnect:
         await websocket.close()
     except Exception as exc:
-        await websocket.send_json({"event": "error", "detail": str(exc)})
-        await websocket.close()
+        # Check if connection is already closed before sending
+        try:
+            await websocket.send_json({"event": "error", "detail": str(exc)})
+            await websocket.close()
+        except:
+            pass
 

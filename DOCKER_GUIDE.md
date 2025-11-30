@@ -200,6 +200,29 @@ docker compose logs --since 10m backend
 
 ---
 
+# Rebuild frontend docker
+docker-compose up -d --build frontend
+
+# Rebuild backend docker
+docker-compose up -d --build backend
+
+# Rebuild ai-service docker
+docker-compose up -d --build ai-service
+
+# Rebuild chromadb docker
+docker-compose up -d --build chromadb
+
+# Rebuild redis docker
+docker-compose up -d --build redis
+
+# Rebuild postgres docker
+docker-compose up -d --build postgres
+
+# Rebuild pgadmin docker
+docker-compose up -d --build pgadmin
+
+---
+
 ## Troubleshooting
 
 ### Services won't start
