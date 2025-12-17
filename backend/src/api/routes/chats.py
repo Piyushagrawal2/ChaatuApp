@@ -5,7 +5,7 @@ from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 
-from ...database.session import get_db
+from ...database.session import get_db, AsyncSessionLocal
 from ...models.chat import Chat, Message
 
 router = APIRouter(prefix="/chats", tags=["chats"])

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config.settings import get_settings
-from .api.routes import health, chats, documents
+from .api.routes import health, chats, documents, datasources
 from .api.websockets import chat as ws_chat
 from .database.session import engine, Base
 
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(chats.router)
     app.include_router(documents.router)
+    app.include_router(datasources.router)
     app.include_router(ws_chat.router)
 
     return app

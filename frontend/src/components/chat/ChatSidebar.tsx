@@ -39,7 +39,7 @@ const ChatSidebar = ({ onNewChat, onSelectChat }: ChatSidebarProps) => {
             <div className="flex flex-col gap-2 w-full px-2">
                 <SidebarItem icon={Plus} label="New Chat" onClick={onNewChat} />
 
-                <SidebarItem icon={Compass} label="Explore">
+                {/* <SidebarItem icon={Compass} label="Explore">
                     <div className="p-4 space-y-4">
                         <h3 className="font-semibold text-lg">Explore</h3>
                         <div className="space-y-2">
@@ -48,7 +48,7 @@ const ChatSidebar = ({ onNewChat, onSelectChat }: ChatSidebarProps) => {
                             <Button variant="ghost" className="w-full justify-start text-sm">New Arrivals</Button>
                         </div>
                     </div>
-                </SidebarItem>
+                </SidebarItem> */}
 
                 <SidebarItem icon={History} label="History">
                     <div className="flex flex-col h-full max-h-[400px]">
@@ -76,19 +76,18 @@ const ChatSidebar = ({ onNewChat, onSelectChat }: ChatSidebarProps) => {
                     </div>
                 </SidebarItem>
 
-                <SidebarItem icon={LayoutDashboard} label="Library">
+                {/* <SidebarItem icon={LayoutDashboard} label="Library">
                     <div className="p-4 space-y-4">
                         <h3 className="font-semibold text-lg">Library</h3>
                         <p className="text-sm text-muted-foreground">Your saved prompts and templates will appear here.</p>
                     </div>
-                </SidebarItem>
+                </SidebarItem> */}
 
-                <SidebarItem icon={Folder} label="Files">
-                    <div className="p-4 space-y-4">
-                        <h3 className="font-semibold text-lg">Files</h3>
-                        <p className="text-sm text-muted-foreground">No files uploaded yet.</p>
-                    </div>
-                </SidebarItem>
+                <SidebarItem
+                    icon={Folder}
+                    label="Data"
+                    onClick={() => window.location.href = '/data'}
+                />
             </div>
 
             <div className="mt-auto flex flex-col gap-2 w-full px-2">

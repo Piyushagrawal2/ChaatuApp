@@ -16,9 +16,13 @@ const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'docx'];
 
 interface DocumentUploadProps {
     conversationId: string | null;
+    onUploadComplete?: () => void;
 }
 
-const DocumentUpload = ({ conversationId }: DocumentUploadProps) => {
+import { useUser } from '@clerk/nextjs';
+
+const DocumentUpload = ({ conversationId, onUploadComplete }: DocumentUploadProps) => {
+    const { user } = useUser();
     const dispatch = useDispatch();
     const uploadProgress = useSelector((state: RootState) => state.chat.uploadProgress);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +75,7 @@ const DocumentUpload = ({ conversationId }: DocumentUploadProps) => {
                     status: 'complete',
                     attachments: [file.name],
                 }));
+                if (onUploadComplete) onUploadComplete();
                 resolve();
             } else {
                 reject(new Error(xhr.responseText || 'Upload failed'));
@@ -79,6 +84,14 @@ const DocumentUpload = ({ conversationId }: DocumentUploadProps) => {
         xhr.onerror = () => reject(new Error('Upload failed'));
         const formData = new FormData();
         formData.append('conversation_id', conversationId);
+        // We need user_id but it's not available in this scope directly if I don't use the hook or pass it as prop.
+        // I will use the hook at the top level and use it here.
+        // Wait, uploadFile is defined inside the component, so I can access user from useUser hook if I add it.
+        if (user?.id) {
+            formData.append('user_id', user.id);
+        } else {
+            formData.append('user_id', 'anonymous');
+        }
         formData.append('file', file);
         xhr.send(formData);
     });
